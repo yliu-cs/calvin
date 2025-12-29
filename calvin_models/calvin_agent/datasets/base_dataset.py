@@ -12,11 +12,20 @@ from calvin_agent.datasets.utils.episode_utils import (
 )
 import numpy as np
 from omegaconf import DictConfig
-import pyhash
 import torch
 from torch.utils.data import Dataset
 
-hasher = pyhash.fnv1_32()
+def fnv1_32(s, hval=0):
+    if isinstance(s, str):
+        utf16_bytes = s.encode("utf-16")
+        s = utf16_bytes[2:]
+    elif not isinstance(s, (bytes, bytearray)):
+        s = bytes(s)
+    for byte in s:
+        hval = (hval + (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24)) & 0xFFFFFFFF
+        hval = (hval ^ byte) & 0xFFFFFFFF
+    return hval
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +42,7 @@ def get_validation_window_size(idx: int, min_window_size: int, max_window_size: 
         Window size computed with hash function.
     """
     window_range = max_window_size - min_window_size + 1
-    return min_window_size + hasher(str(idx)) % window_range
+    return min_window_size + fnv1_32(str(idx)) % window_range
 
 
 class BaseDataset(Dataset):

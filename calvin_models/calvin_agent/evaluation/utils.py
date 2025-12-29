@@ -13,11 +13,20 @@ import hydra
 import numpy as np
 from numpy import pi
 from omegaconf import OmegaConf
-import pyhash
 import torch
 
-hasher = pyhash.fnv1_32()
 logger = logging.getLogger(__name__)
+
+def fnv1_32(s, hval=0):
+    if isinstance(s, str):
+        utf16_bytes = s.encode("utf-16")
+        s = utf16_bytes[2:]
+    elif not isinstance(s, (bytes, bytearray)):
+        s = bytes(s)
+    for byte in s:
+        hval = (hval + (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24)) & 0xFFFFFFFF
+        hval = (hval ^ byte) & 0xFFFFFFFF
+    return hval
 
 
 def get_default_model_and_env(train_folder, dataset_path, checkpoint, env=None, device_id=0):
@@ -232,7 +241,7 @@ def get_env_state_for_initial_condition(initial_condition):
         np.array([2.29995412e-01, -1.19995140e-01, 4.59990010e-01]),
     ]
     # we want to have a "deterministic" random seed for each initial condition
-    seed = hasher(str(initial_condition.values()))
+    seed = fnv1_32(str(initial_condition.values()))
     with temp_seed(seed):
         np.random.shuffle(block_table)
 
